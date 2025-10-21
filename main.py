@@ -8,7 +8,7 @@ from PyQt6.QtWidgets import (
     QSlider, QCheckBox, QInputDialog, QSpinBox
 )
 from PyQt6.QtCore import Qt, QPointF, QRectF
-from PyQt6.QtGui import QFont, QPen, QColor, QBrush, QTransform, QPainter
+from PyQt6.QtGui import QFont, QPen, QColor, QBrush, QTransform, QPainter, QFontMetrics
 
 NODE_R = 22
 
@@ -303,14 +303,29 @@ class RouteApp(QMainWindow):
             if u not in self.node_positions or v not in self.node_positions:
                 continue
             self._draw_arrow(self.node_positions[u], self.node_positions[v], base_edge_color, 2, 1)
-            mx = (self.node_positions[u].x() + self.node_positions[v].x())/2 + NODE_R
-            my = (self.node_positions[u].y() + self.node_positions[v].y())/2 + NODE_R
-            rect = QRectF(mx-12, my-10, 28, 18)
-            bg_brush = QBrush(QColor(255,255,255,60) if not self.dark_mode else QColor(0,0,0,80))
+            c1 = self.node_positions[u]
+            c2 = self.node_positions[v]
+            x1, y1 = c1.x()+NODE_R, c1.y()+NODE_R
+            x2, y2 = c2.x()+NODE_R, c2.y()+NODE_R
+            dx, dy = x2 - x1, y2 - y1
+            L = math.hypot(dx, dy)
+            if L == 0:
+                continue
+            ux, uy = dx / L, dy / L
+            nx, ny = -uy, ux
+            mx, my = (x1 + x2) / 2, (y1 + y2) / 2
+            off = 16
+            lx, ly = mx + nx * off, my + ny * off
+            font = QFont("Segoe UI", self.weight_font_size)
+            fm = QFontMetrics(font)
+            s = str(w)
+            tw, th = fm.horizontalAdvance(s), fm.height()
+            rect = QRectF(lx - (tw/2) - 4, ly - (th/2) - 2, tw + 8, th)
+            bg_brush = QBrush(QColor(255,255,255,70) if not self.dark_mode else QColor(0,0,0,100))
             self.scene.addRect(rect, QPen(Qt.PenStyle.NoPen), bg_brush)
-            wt = self.scene.addText(str(w), QFont("Segoe UI", self.weight_font_size))
+            wt = self.scene.addText(s, font)
             wt.setDefaultTextColor(text_color)
-            wt.setPos(mx-8, my-9)
+            wt.setPos(lx - tw/2, ly - th/2)
             wt.setZValue(3)
         path_edges = set()
         if highlight_path and len(highlight_path) > 1:
